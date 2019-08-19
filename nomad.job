@@ -1,0 +1,64 @@
+job "scalad" {
+  region = "global"
+  datacenters = ["dc1"]
+  type        = "service"
+
+  group "job-autoscaler" {
+    count = 1
+
+    task "scaler" {
+      driver = "docker"
+
+      config {
+        image = "trivago/scalad:0.1"
+        force_pull = true
+        network_mode = "host"
+      }
+
+      service {
+        name = "${NOMAD_JOB_NAME}"
+        tags = ["nomad-autoscaler", "scalad"]
+        port = "http"
+
+        check {
+          type     = "http"
+          path     = "/"
+          interval = "30s"
+          timeout  = "2s"
+        }
+      }
+
+      template {
+        data = <<EOH
+         PORT = {{ env "NOMAD_ADDR_http" }}
+         NOMAD_HOST = "http://nomad.service.consul:4646"
+         ##Slack Parameters for sending scaling events
+         USE_SLACK = "false"
+         SLACK_CHANNEL = "#scalad"
+         SLACK_USERNAME = "scalad"
+         SLACK_WEBHOOK = ""
+         ##enable scaling of jobs with secrets from vault (this token needs access to the all policies of jobs that scalad will scale
+         VAULT_TOKEN =  ""
+         ##authentication for the manual scaling endpoints
+         HTTP_USER = "user"
+         HTTP_PASS = "pass"
+         ##prometheus endpoint to run queries against for scaling
+         METRICS_ENDPOINT = "http://prometheus.service.consul:9090/api/v1/query?query="
+
+         EOH
+
+        destination = "secrets/file.env"
+        env         = true
+      }
+
+      resources {
+        cpu    = 300
+        memory = 128
+
+        network {
+          port  "http"{}
+        }
+      }
+    }
+  }
+}

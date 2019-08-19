@@ -1,0 +1,12 @@
+# IDEs / os related
+**/.DS_Store
+**/*~
+.vscode
+.idea
+
+# Tests
+*.test
+*_test.go
+
+# Binaries
+scalad
