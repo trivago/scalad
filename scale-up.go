@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/trivago/scalad/job"
-	"github.com/trivago/scalad/slack"
-	"github.com/trivago/scalad/structs"
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-chi/chi"
 	nomad "github.com/hashicorp/nomad/api"
+	"github.com/trivago/scalad/job"
+	"github.com/trivago/scalad/slack"
+	"github.com/trivago/scalad/structs"
 )
 
 // ScaleUp function checks that the current job is not in cooldown in the map and if it is not
@@ -103,7 +103,6 @@ func (scaler *Scaler) ScaleUp(jobID string, region string) (err error) {
 			log.Error("Scale down failed with err: ", err)
 			return err
 		}
-
 	}
 	return nil
 }

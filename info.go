@@ -1,57 +1,70 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
+	"strconv"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/alecthomas/template"
 )
 
-// LastJobs function updates the last20Jobs array with the last 20 jobs executed.
-func LastJobs(jobID string, region string, direction string, time time.Time) {
-	for i := 0; i < 19; i++ {
-		last20Jobs[i] = last20Jobs[i+1]
+type lastJob struct {
+	JobID     string
+	Region    string
+	Direction string
+	Time      time.Time
+}
+
+// LastJobs function updates the lastJobs map with the jobs executed in the last X (INFO_TIME env variable) minutes.
+func LastJobs(jobID string, region string, direction string, trigerTime time.Time) {
+	secs := trigerTime.Unix()
+	var m lastJob
+
+	m.JobID = jobID
+	m.Region = region
+	m.Direction = direction
+	m.Time = trigerTime
+
+	lastJobs[secs] = m
+}
+
+func clearInfoMap() {
+	now := time.Now().Unix()
+	infoTimeInt64, err := strconv.ParseInt(infoTime, 10, 64)
+	if err != nil {
+		log.Error("Error converting int to int64 with err: ", err, ". Setting infoTimeInt64 to 60 minutes")
+		infoTimeInt64 = 60
 	}
-	last20Jobs[19] = "<td>" + jobID + "</td><td>" + region + "</td><td>" + direction + "</td><td>" + time.String() + "</td></tr>"
+	for key := range lastJobs {
+		if (now - (infoTimeInt64 * 60)) > key {
+			delete(lastJobs, key)
+		}
+	}
 }
 
 // StatusPage function returns an html page displaying the last 20 scalling operations performed.
 func StatusPage(w http.ResponseWriter, r *http.Request) {
-	message := `<html>
-<header>
-<style>
-table {
-    font-family: arial, sans-serif;
-    border-collapse: collapse;
-    width: 100%;
-}
-
-td, th {
-    border: 1px solid #dddddd;
-    text-align: left;
-    padding: 18px;
-}
-
-tr:nth-child(even) {
-    background-color: #dddddd;
-}
-</style>
-<h1>TCS-Scaler Info</h1>
-</header>
-<h2>Last request recieved:</h2>
-<table>
-<tr>
-	<th>JobID</th>
-	<th>Region</th>
-	<th>Alertname</th>
-	<th>Recieved At</th>
-</tr>
-<tr>
-`
-	fmt.Fprintf(w, "%s", message)
-	for i := 0; i < 20; i++ {
-		fmt.Fprintf(w, "%s", last20Jobs[i])
+	message, err := Asset("templates/info.html")
+	if err != nil {
+		log.Error("Error loading asset for info.html with err: ", err)
+		return
 	}
-	fmt.Fprintf(w, "</table>")
-	fmt.Fprintf(w, "</html>")
+
+	messageTmpl, err := template.New("message").Parse(string(message))
+	if err != nil {
+		log.Error("Error rendering template for info.html with err: ", err)
+		return
+	}
+
+	info := struct {
+		LastJobs map[int64]lastJob
+		InfoTime string
+	}{
+		lastJobs,
+		infoTime,
+	}
+
+	messageTmpl.Execute(w, info)
 
 }

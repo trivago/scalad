@@ -25,20 +25,25 @@ import (
 )
 
 var (
-	port            = os.Getenv("PORT")
-	nomadHost       = os.Getenv("NOMAD_HOST")
-	region          = os.Getenv("NOMAD_REGION")
-	vaultToken      = os.Getenv("VAULT_TOKEN")
-	useSlack        = os.Getenv("USE_SLACK")
-	username        = os.Getenv("HTTP_USER")
-	password        = os.Getenv("HTTP_PASS")
-	metricsEndpoint = os.Getenv("METRICS_ENDPOINT")
-	last20Jobs      [20]string
-	namespace       = "scalers"
-	subsystem       = ""
-	scalerLabels    = []string{"name", "region", "direction"}
-	apiLabels       = []string{}
-	scalerVec       = prometheus.NewCounterVec(
+	port                = os.Getenv("PORT")
+	nomadHost           = os.Getenv("NOMAD_HOST")
+	region              = os.Getenv("NOMAD_REGION")
+	vaultToken          = os.Getenv("VAULT_TOKEN")
+	useSlack            = os.Getenv("USE_SLACK")
+	username            = os.Getenv("HTTP_USER")
+	password            = os.Getenv("HTTP_PASS")
+	metricsEndpoint     = os.Getenv("METRICS_ENDPOINT")
+	infoTime            = os.Getenv("INFO_TIME")
+	fireMapTickerEnv    = os.Getenv("FIREMAP_TICKER_SECS")
+	scalerTickerEnv     = os.Getenv("SCALER_TICKER_SECS")
+	scalerTickerEnvInt  int64
+	fireMapTickerEnvInt int64
+	lastJobs            map[int64]lastJob
+	namespace           = "scalers"
+	subsystem           = ""
+	scalerLabels        = []string{"name", "region", "direction"}
+	apiLabels           = []string{}
+	scalerVec           = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "count"),
 			Help: "Scaling jobs",
@@ -78,18 +83,34 @@ func init() {
 	if len(port) == 0 {
 		port = ":8080"
 	}
+	if len(infoTime) == 0 {
+		infoTime = "60"
+	}
+	if len(fireMapTickerEnv) == 0 {
+		fireMapTickerEnv = "30"
+	}
+	if len(scalerTickerEnv) == 0 {
+		scalerTickerEnv = "60"
+	}
+	var err error
+	fireMapTickerEnvInt, err = strconv.ParseInt(fireMapTickerEnv, 10, 64)
+	if err != nil {
+		log.Fatal("Error converting fireMapTicker to int with err: ", err)
+	}
+
+	scalerTickerEnvInt, err = strconv.ParseInt(scalerTickerEnv, 10, 64)
+	if err != nil {
+		log.Fatal("Error converting scalerTicker to int with err: ", err)
+	}
 
 	prometheus.MustRegister(scalerVec)
 	prometheus.MustRegister(apiRequestsVec)
-
-	for i := 0; i < 20; i++ {
-		last20Jobs[i] = "<td> </td><td> </td><td> </td><td> </td></tr>"
-	}
 
 	jobMap = make(map[string]*nomad.Job)
 	jobMapScale = make(map[string]*nomad.Job)
 	jobMetaMap = make(map[string]*structs.Meta)
 	fireTimeMap = make(map[string]*structs.TrigeredAction)
+	lastJobs = make(map[int64]lastJob)
 }
 
 // startHTTP function starts the chi router and register all the enpoints availables.
@@ -299,62 +320,46 @@ func queryPrometheus(query string, promQuery string) (bool, error) {
 func checkMeta(jobMap map[string]*api.Job) {
 	jobMapScaleMutex.Lock()
 	jobMetaMapMutex.Lock()
+	defer jobMapScaleMutex.Unlock()
+	defer jobMetaMapMutex.Unlock()
 	for _, job := range jobMap {
-		var meta structs.Meta
 		if job.Meta["scaler"] == "true" {
 			jobMapScale[*job.Name] = job
-			meta.MinQuery = job.Meta["min_query"]
-			meta.MaxQuery = job.Meta["max_query"]
-			meta.FireTime = job.Meta["query_fire_time"]
-			meta.ScaleMin = job.Meta["scale_min"]
-			meta.ScaleMax = job.Meta["scale_max"]
-			meta.ScaleCountUp = job.Meta["scale_count_up"]
-			meta.ScaleCooldown = job.Meta["scale_count_down"]
-			meta.ScaleCooldownUp = job.Meta["scale_cooldown_up"]
-			meta.ScaleCooldownDown = job.Meta["scale_cooldown_down"]
-
-			jobMetaMap[*job.Name] = &meta
+			jobMetaMap[*job.Name] = readMeta(job.Meta)
 			log.Debug("Adding ", *job.Name, " to jobMapScale JOB level")
 		}
 		for _, taskGroup := range job.TaskGroups {
 			if taskGroup.Meta["scaler"] == "true" {
+				// bug
+				// todo: replace with job.Name + task group
 				jobMapScale[*job.Name] = job
-				meta.MinQuery = taskGroup.Meta["min_query"]
-				meta.MaxQuery = taskGroup.Meta["max_query"]
-				meta.FireTime = taskGroup.Meta["query_fire_time"]
-				meta.ScaleMin = taskGroup.Meta["scale_min"]
-				meta.ScaleMax = taskGroup.Meta["scale_max"]
-				meta.ScaleCountUp = taskGroup.Meta["scale_count_up"]
-				meta.ScaleCooldown = taskGroup.Meta["scale_count_down"]
-				meta.ScaleCooldownUp = taskGroup.Meta["scale_cooldown_up"]
-				meta.ScaleCooldownDown = taskGroup.Meta["scale_cooldown_down"]
-
-				jobMetaMap[*job.Name] = &meta
+				jobMetaMap[*job.Name] = readMeta(taskGroup.Meta)
 				log.Debug("Adding ", *job.Name, " to jobMapScale TASKGROUP level")
-
 			}
 			for _, task := range taskGroup.Tasks {
 				if task.Meta["scaler"] == "true" {
 					jobMapScale[*job.Name] = job
-					meta.MinQuery = task.Meta["min_query"]
-					meta.MaxQuery = task.Meta["max_query"]
-					meta.FireTime = task.Meta["query_fire_time"]
-					meta.ScaleMin = task.Meta["scale_min"]
-					meta.ScaleMax = task.Meta["scale_max"]
-					meta.ScaleCountUp = task.Meta["scale_count_up"]
-					meta.ScaleCooldown = task.Meta["scale_count_down"]
-					meta.ScaleCooldownUp = task.Meta["scale_cooldown_up"]
-					meta.ScaleCooldownDown = task.Meta["scale_cooldown_down"]
-
-					jobMetaMap[*job.Name] = &meta
+					jobMetaMap[*job.Name] = readMeta(task.Meta)
 					log.Debug("Adding ", *job.Name, " to jobMapScale TASK level")
 
 				}
 			}
 		}
 	}
-	jobMapScaleMutex.Unlock()
-	jobMetaMapMutex.Unlock()
+}
+
+func readMeta(t map[string]string) *structs.Meta {
+	var m structs.Meta
+	m.MinQuery = t["min_query"]
+	m.MaxQuery = t["max_query"]
+	m.FireTime = t["query_fire_time"]
+	m.ScaleMin = t["scale_min"]
+	m.ScaleMax = t["scale_max"]
+	m.ScaleCountUp = t["scale_count_up"]
+	m.ScaleCooldown = t["scale_count_down"]
+	m.ScaleCooldownUp = t["scale_cooldown_up"]
+	m.ScaleCooldownDown = t["scale_cooldown_down"]
+	return &m
 }
 
 func getJobs() (map[string]*nomad.Job, error) {

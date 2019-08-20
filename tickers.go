@@ -7,7 +7,7 @@ import (
 )
 
 func fireMapTicker() {
-	ticker := time.NewTicker(time.Second * 30)
+	ticker := time.NewTicker(time.Second * time.Duration(fireMapTickerEnvInt))
 
 	go func() {
 		for _ = range ticker.C {
@@ -18,7 +18,7 @@ func fireMapTicker() {
 }
 
 func scalerTicker() {
-	ticker := time.NewTicker(time.Minute * 1)
+	ticker := time.NewTicker(time.Minute * time.Duration(scalerTickerEnvInt))
 
 	var err error
 	go func() {
