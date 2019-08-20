@@ -1,0 +1,37 @@
+<html>
+<header>
+<style>
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+td, th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 18px;
+}
+
+tr:nth-child(even) {
+    background-color: #dddddd;
+}
+</style>
+<h1>TCS-Scaler Info</h1>
+</header>
+<h2>Last {{.InfoTime}} Minutes request recieved:</h2>
+<table>
+<tr>
+	<th>JobID</th>
+	<th>Region</th>
+	<th>Alertname</th>
+	<th>Recieved At</th>
+</tr>
+<tr>
+{{ range $i, $scaleEvent := .LastJobs }}
+    <td>{{$scaleEvent.JobID}}</td><td>{{$scaleEvent.Region}}</td><td>{{$scaleEvent.Direction}}</td><td>{{$scaleEvent.Time}}</td></tr>
+{{end}}
+
+</table>
+</html>
+
