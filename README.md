@@ -1,3 +1,7 @@
+<p align="center">
+<img width="250" src="scalad_mascot.png" />
+</p>
+
 Env variables:
 
 *    `PORT = "80"`: Port on which the application is going to be listening.
