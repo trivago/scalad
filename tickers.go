@@ -18,7 +18,7 @@ func fireMapTicker() {
 }
 
 func scalerTicker() {
-	ticker := time.NewTicker(time.Minute * time.Duration(scalerTickerEnvInt))
+	ticker := time.NewTicker(time.Second * time.Duration(scalerTickerEnvInt))
 
 	var err error
 	go func() {
