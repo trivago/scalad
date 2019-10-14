@@ -13,7 +13,7 @@ Env variables:
 *    `HTTP_PASS = "password"`: Password needed for basic auth for endpoints to scale up or down manually
 *    `METRICS_ENDPOINT = "http://prometheus.yourorg.com/api/v1/query?query="`: Endpoint from where to get the metrics which are going to be used to triger the scale events.
 
-Inside Job file (at taskGroup lvl):
+Inside Job file (At taskGroup lvl):
 ````
 meta {
     scaler = "true" Activate the scaler
