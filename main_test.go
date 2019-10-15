@@ -126,7 +126,7 @@ scaler:"true"
 */
 
 func Test_queryPrometheus(t *testing.T) {
-	metricsEndpoint = `http://prometheus.tcs.trv.cloud/api/v1/query?query=`
+	metricsEndpoint = `http://demo.robustperception.io:9090/api/v1/query?query=`
 	type args struct {
 		query     string
 		promQuery string
@@ -137,9 +137,9 @@ func Test_queryPrometheus(t *testing.T) {
 		want    bool
 		wantErr bool
 	}{
-		{name: "Normal", args: args{query: "sum(nginx_http_requests_total)>bool 5", promQuery: "sum(nginx_http_requests_total)>bool 5"}, want: true, wantErr: false},
-		{name: "Query Result != 1", args: args{query: "sum(nginx_http_requests_total)", promQuery: "sum(nginx_http_requests_total)"}, want: false, wantErr: false},
-		{name: "Response Html code > 400", args: args{query: "sum(nginx_http_requests_total)", promQuery: "%wrong"}, want: false, wantErr: true},
+		{name: "Normal", args: args{query: "http_ping_requests_total>bool 5", promQuery: "http_ping_requests_total>bool 5"}, want: true, wantErr: false},
+		{name: "Query Result != 1", args: args{query: "http_ping_requests_total", promQuery: "http_ping_requests_total"}, want: false, wantErr: false},
+		{name: "Response Html code > 400", args: args{query: "http_ping_requests_total", promQuery: "%wrong"}, want: false, wantErr: true},
 
 		// TODO: Add test cases.
 	}
@@ -158,32 +158,32 @@ func Test_queryPrometheus(t *testing.T) {
 }
 
 func Test_prometheusQueries(t *testing.T) {
-	metricsEndpoint = `http://prometheus.tcs.trv.cloud/api/v1/query?query=`
+	metricsEndpoint = `http://demo.robustperception.io:9090/api/v1/query?query=`
 	type args struct {
 		jobMetaMap map[string]*structs.Meta
 	}
 	jobMetaMapTest := map[string]*structs.Meta{
 		"test-job": &structs.Meta{
-			MinQuery: "sum(nginx_http_requests_total)>bool 5", //true
-			MaxQuery: "sum(nginx_http_requests_total)<bool 5", //false
+			MinQuery: "http_ping_requests_total>bool 5", //true
+			MaxQuery: "http_ping_requests_total<bool 5", //false
 		},
 	}
 	jobMetaMapTest2 := map[string]*structs.Meta{
 		"test-job": &structs.Meta{
-			MinQuery: "sum(nginx_http_requests_total)<bool 5", //false
-			MaxQuery: "sum(nginx_http_requests_total)>bool 5", //true
+			MinQuery: "http_ping_requests_total<bool 5", //false
+			MaxQuery: "http_ping_requests_total>bool 5", //true
 		},
 	}
 	jobMetaMapTest3 := map[string]*structs.Meta{
 		"test-job": &structs.Meta{
-			MinQuery: "sum(nginx_http_requests_total)>bool 5", //true
-			MaxQuery: "sum(nginx_http_requests_total)>bool 5", //true
+			MinQuery: "http_ping_requests_total>bool 5", //true
+			MaxQuery: "http_ping_requests_total>bool 5", //true
 		},
 	}
 	jobMetaMapTest4 := map[string]*structs.Meta{
 		"test-job": &structs.Meta{
-			MinQuery: "sum(nginx_http_requests_total)<bool 5", //false
-			MaxQuery: "sum(nginx_http_requests_total)<bool 5", //false
+			MinQuery: "http_ping_requests_total<bool 5", //false
+			MaxQuery: "http_ping_requests_total<bool 5", //false
 		},
 	}
 
@@ -195,26 +195,26 @@ func Test_prometheusQueries(t *testing.T) {
 	}
 	jobMetaMapTest6 := map[string]*structs.Meta{
 		"test-job": &structs.Meta{
-			MaxQuery: "sum(nginx_http_requests_total)>bool 5", //true
-			MinQuery: "%wrong",                                //error
+			MaxQuery: "http_ping_requests_total>bool 5", //true
+			MinQuery: "%wrong",                          //error
 		},
 	}
 	jobMetaMapTest7 := map[string]*structs.Meta{
 		"test-job": &structs.Meta{
-			MaxQuery: "sum(nginx_http_requests_total)<bool 5", //false
-			MinQuery: "%wrong",                                //error
+			MaxQuery: "http_ping_requests_total<bool 5", //false
+			MinQuery: "%wrong",                          //error
 		},
 	}
 	jobMetaMapTest8 := map[string]*structs.Meta{
 		"test-job": &structs.Meta{
-			MaxQuery: "%wrong",                                //error
-			MinQuery: "sum(nginx_http_requests_total)>bool 5", //true
+			MaxQuery: "%wrong",                          //error
+			MinQuery: "http_ping_requests_total>bool 5", //true
 		},
 	}
 	jobMetaMapTest9 := map[string]*structs.Meta{
 		"test-job": &structs.Meta{
-			MaxQuery: "%wrong",                                //false
-			MinQuery: "sum(nginx_http_requests_total)<bool 5", //error
+			MaxQuery: "%wrong",                          //false
+			MinQuery: "http_ping_requests_total<bool 5", //error
 		},
 	}
 
