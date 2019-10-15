@@ -362,26 +362,26 @@ func readMeta(t map[string]string) *structs.Meta {
 	return &m
 }
 
-func getJobs() (map[string]*nomad.Job, error) {
+func getJobs(address string) (map[string]*nomad.Job, error) {
 	jobMap := make(map[string]*nomad.Job)
 
-	fmt.Println("Starting")
-	log.Info(nomadHost)
-	nomadClient, err := api.NewClient(&api.Config{Address: nomadHost, TLSConfig: &api.TLSConfig{}})
+	log.Debug("before creating client")
+	nomadClient, err := api.NewClient(&api.Config{Address: address, TLSConfig: &api.TLSConfig{}})
 	if err != nil {
 		log.Error("Error creating nomad client with err: ", err)
 		return nil, err
 	}
-	fmt.Println("After client creation")
+	log.Debug("after creating client")
 
 	options := &api.QueryOptions{AllowStale: true}
 
+	log.Debug("before getting jobs")
 	joblist, _, err := nomadClient.Jobs().List(options)
 	if err != nil {
 		log.Error("Unable to get job list from nomad with err: ", err)
 		return nil, err
 	}
-	fmt.Println("After getting job list")
+	log.Debug("after getting jobs")
 
 	jobMapMutex.Lock()
 	jobMapScaleMutex.Lock()

@@ -23,7 +23,7 @@ func scalerTicker() {
 	var err error
 	go func() {
 		for _ = range ticker.C {
-			jobMap, err = getJobs()
+			jobMap, err = getJobs(nomadHost)
 			if err != nil {
 				log.Error("Error getting jobs from nomad from inside Ticker with err: ", err)
 			}
