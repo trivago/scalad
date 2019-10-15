@@ -356,7 +356,7 @@ func readMeta(t map[string]string) *structs.Meta {
 	m.ScaleMin = t["scale_min"]
 	m.ScaleMax = t["scale_max"]
 	m.ScaleCountUp = t["scale_count_up"]
-	m.ScaleCooldown = t["scale_count_down"]
+	m.ScaleCountDown = t["scale_count_down"]
 	m.ScaleCooldownUp = t["scale_cooldown_up"]
 	m.ScaleCooldownDown = t["scale_cooldown_down"]
 	return &m
@@ -365,10 +365,14 @@ func readMeta(t map[string]string) *structs.Meta {
 func getJobs() (map[string]*nomad.Job, error) {
 	jobMap := make(map[string]*nomad.Job)
 
+	fmt.Println("Starting")
+	log.Info(nomadHost)
 	nomadClient, err := api.NewClient(&api.Config{Address: nomadHost, TLSConfig: &api.TLSConfig{}})
 	if err != nil {
 		log.Error("Error creating nomad client with err: ", err)
+		return nil, err
 	}
+	fmt.Println("After client creation")
 
 	options := &api.QueryOptions{AllowStale: true}
 
@@ -377,6 +381,7 @@ func getJobs() (map[string]*nomad.Job, error) {
 		log.Error("Unable to get job list from nomad with err: ", err)
 		return nil, err
 	}
+	fmt.Println("After getting job list")
 
 	jobMapMutex.Lock()
 	jobMapScaleMutex.Lock()
