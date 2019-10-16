@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trivago/scalad/slack"
-	"github.com/trivago/scalad/structs"
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-chi/chi"
 	tparse "github.com/karrick/tparse/v2"
+	"github.com/trivago/scalad/slack"
+	"github.com/trivago/scalad/structs"
 )
 
 // Scaler jobMap handler.
@@ -31,8 +31,9 @@ func newScaler() Scaler {
 // health function is an http enpoint used for consul to check the health of the application.
 // If it is healthy it will retun a: http/200 All Good message
 func (scaler *Scaler) health(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 	message := "<html>All Good</html>"
-	fmt.Fprintf(w, "%s", message)
+	w.Write([]byte(message))
 }
 
 func (scaler *Scaler) stopScallingJob(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +45,9 @@ func (scaler *Scaler) stopScallingJob(w http.ResponseWriter, r *http.Request) {
 	sleep, err := tparse.AddDuration(now, timer)
 	if err != nil {
 		log.Debug("Error parsing time for pause command with err: ", err)
+		w.WriteHeader(http.StatusNotAcceptable)
+		message := "Error parsing time for " + mapID + " with timer " + timer
+		w.Write([]byte(message))
 		return
 	}
 	job.ScaleCooldown = sleep
@@ -52,7 +56,8 @@ func (scaler *Scaler) stopScallingJob(w http.ResponseWriter, r *http.Request) {
 	mutex.Unlock()
 	message := "Manually paused: " + mapID + " for " + timer
 	slack.SendMessage(message)
-	fmt.Fprintf(w, "%s", message)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(message))
 }
 
 func (scaler *Scaler) resumeScallingJob(w http.ResponseWriter, r *http.Request) {
@@ -65,17 +70,21 @@ func (scaler *Scaler) resumeScallingJob(w http.ResponseWriter, r *http.Request) 
 
 	message := "Manually resumed: " + mapID
 	slack.SendMessage(message)
-	fmt.Fprintf(w, "%s", message)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(message))
 }
 
 func (scaler *Scaler) scaleAction(body []byte) (err error) {
 	postStruct := new(structs.PostRequest)
+	fmt.Println(string(body))
 	err = json.Unmarshal(body, postStruct)
 	if err != nil {
 		log.Error("Body: ", string(body))
 		log.Error("Error Unmarshalling postJson with err: ", err)
 		return err
 	}
+
+	fmt.Println("Struct: ", postStruct)
 
 	for k := range postStruct.Alerts {
 		allocID := postStruct.Alerts[k].Labels.AllocID

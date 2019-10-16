@@ -187,9 +187,12 @@ const (
 func fakeHTTPServer(syncChan chan syncMessage) {
 	log.Info("Running fake nomad server")
 	r := chi.NewMux()
-
+	scaler = newScaler()
 	r.Get("/v1/{command:[a-z-]+}", jobsMock)
 	r.Get("/v1/job/{command:[a-z-]+}", jobMock)
+	r.Get("/", scaler.health)
+	r.Get("/stop-scalling/{jobName}/{timer}", scaler.stopScallingJob)
+	r.Get("/resume-scalling/{jobName}", scaler.resumeScallingJob)
 	syncChan <- syncMessage{}
 	http.ListenAndServe(":8088", r)
 }
