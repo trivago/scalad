@@ -1,17 +1,221 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"reflect"
 	"testing"
 
+	log "github.com/Sirupsen/logrus"
+	"github.com/go-chi/chi"
 	"github.com/go-test/deep"
 	"github.com/hashicorp/nomad/api"
 	nomad "github.com/hashicorp/nomad/api"
 	"github.com/trivago/scalad/structs"
 )
 
+type syncMessage struct {
+}
+
+func init() {
+	syncChan := make(chan syncMessage)
+	go fakeHTTPServer(syncChan)
+	_ = <-syncChan
+	log.SetLevel(log.PanicLevel)
+}
+
+const (
+	testJob = `{
+	"Stop": false,
+	"Region": "dc1",
+	"Namespace": "default",
+	"ID": "test-job",
+	"ParentID": "",
+	"Name": "test-job",
+	"Type": "service",
+	"Priority": 50,
+	"AllAtOnce": false,
+	"Datacenters": [
+	  "dc1"
+	],
+	"Constraints": null,
+	"Affinities": null,
+	"Spreads": null,
+	"TaskGroups": [
+	  {
+		"Name": "test-job",
+		"Count": 1,
+		"Update": {
+		  "Stagger": 30000000000,
+		  "MaxParallel": 1,
+		  "HealthCheck": "checks",
+		  "MinHealthyTime": 30000000000,
+		  "HealthyDeadline": 60000000000,
+		  "ProgressDeadline": 600000000000,
+		  "AutoRevert": true,
+		  "AutoPromote": false,
+		  "Canary": 1
+		},
+		"Migrate": {
+		  "MaxParallel": 1,
+		  "HealthCheck": "checks",
+		  "MinHealthyTime": 10000000000,
+		  "HealthyDeadline": 300000000000
+		},
+		"Constraints": null,
+		"RestartPolicy": {
+		  "Attempts": 2,
+		  "Interval": 1800000000000,
+		  "Delay": 15000000000,
+		  "Mode": "fail"
+		},
+		"Tasks": [
+		  {
+			"Name": "test-job",
+			"Driver": "docker",
+			"User": "",
+			"Config": {
+			  "image": "artifactory.com/test-job",
+			  "port_map": [
+				{
+				  "http": 80
+				}
+			  ]
+			},
+			"Env": null,
+			"Vault": null,
+			"Templates": null,
+			"Constraints": null,
+			"Affinities": null,
+			"Resources": {
+			  "CPU": 100,
+			  "MemoryMB": 128,
+			  "DiskMB": 0,
+			  "IOPS": 0,
+			  "Networks": [
+				{
+				  "Device": "",
+				  "CIDR": "",
+				  "IP": "",
+				  "MBits": 10,
+				  "ReservedPorts": null,
+				  "DynamicPorts": [
+					{
+					  "Label": "http",
+					  "Value": 0
+					},
+					{
+					  "Label": "grpc",
+					  "Value": 0
+					}
+				  ]
+				}
+			  ],
+			  "Devices": null
+			},
+			"DispatchPayload": null,
+			"Meta": null,
+			"KillTimeout": 5000000000,
+			"LogConfig": {
+			  "MaxFiles": 10,
+			  "MaxFileSizeMB": 10
+			},
+			"Artifacts": null,
+			"Leader": false,
+			"ShutdownDelay": 15000000000,
+			"KillSignal": ""
+		  }
+		],
+		"EphemeralDisk": {
+		  "Sticky": false,
+		  "SizeMB": 300,
+		  "Migrate": false
+		},
+		"Meta": {
+			"max_query": "http_ping_requests_total>bool 5",
+			"min_query": "http_ping_requests_total<bool 5",
+			"query_fire_time": "2m",
+			"scale_cooldown_down": "20s",
+			"scale_cooldown_up": "25s",
+			"scale_count_down": "1",
+			"scale_count_up": "2",
+			"scale_max": "16",
+			"scale_min": "4",
+			"scaler": "true"
+		},
+		"ReschedulePolicy": {
+		  "Attempts": 0,
+		  "Interval": 0,
+		  "Delay": 30000000000,
+		  "DelayFunction": "exponential",
+		  "MaxDelay": 3600000000000,
+		  "Unlimited": true
+		},
+		"Affinities": null,
+		"Spreads": null
+	  }
+	],
+	"Update": {
+	  "Stagger": 30000000000,
+	  "MaxParallel": 1,
+	  "HealthCheck": "",
+	  "MinHealthyTime": 0,
+	  "HealthyDeadline": 0,
+	  "ProgressDeadline": 0,
+	  "AutoRevert": false,
+	  "AutoPromote": false,
+	  "Canary": 0
+	},
+	"Periodic": null,
+	"ParameterizedJob": null,
+	"Dispatched": false,
+	"Payload": null,
+	"Meta": null,
+	"VaultToken": "",
+	"Status": "running",
+	"StatusDescription": "",
+	"Stable": true,
+	"Version": 5,
+	"SubmitTime": 1565349104838710000,
+	"CreateIndex": 5761412,
+	"ModifyIndex": 18117344,
+	"JobModifyIndex": 18117289
+  }`
+)
+
+func fakeHTTPServer(syncChan chan syncMessage) {
+	log.Info("Running fake nomad server")
+	r := chi.NewMux()
+
+	r.Get("/v1/{command:[a-z-]+}", jobsMock)
+	r.Get("/v1/job/{command:[a-z-]+}", jobMock)
+	syncChan <- syncMessage{}
+	http.ListenAndServe(":8088", r)
+}
+
+func jobsMock(w http.ResponseWriter, r *http.Request) {
+	log.Info("Got request for: ", r.URL)
+	response := `[{"ID":"test-job","ParentID":"","Name":"test-job","Datacenters":["dc1"],"Type":"service","Priority":50,"Periodic":false,"ParameterizedJob":false,"Stop":false,"Status":"running","StatusDescription":"","JobSummary":{"JobID":"test-job","Namespace":"default","Summary":{"test-job":{"Queued":0,"Complete":6,"Failed":0,"Running":1,"Starting":0,"Lost":0}},"Children":null,"CreateIndex":5118118,"ModifyIndex":18740326},"CreateIndex":5118118,"ModifyIndex":18740329,"JobModifyIndex":18740317,"SubmitTime":1569512423389613911}]`
+	fmt.Fprintf(w, "%s", response)
+}
+
+func jobMock(w http.ResponseWriter, r *http.Request) {
+	log.Info("Got request for: ", r.URL)
+	var response string
+	if r.URL.String() != "/v1/job/test-job?stale=" {
+		response = "job not found"
+	} else {
+		response = testJob
+	}
+	fmt.Fprintf(w, "%s", response)
+}
+
 func Test_getJobs(t *testing.T) {
-	jobs, _ := getJobs(nomadHost)
+	jobs, err := getJobs("http://127.0.0.1:8088")
+	if err != nil {
+		log.Error("Error getting jobs with err: ", err)
+	}
 	jobMap = jobs
 	var mapa map[string]*nomad.Job
 	tests := []struct {
@@ -20,7 +224,7 @@ func Test_getJobs(t *testing.T) {
 		wantErr bool
 		address string
 	}{
-		{name: "Normal funtion", want: jobs, wantErr: false, address: "http://nomad.service.consul:4646"},
+		{name: "Normal funtion", want: jobs, wantErr: false, address: "http://127.0.0.1:8088"},
 		{name: "Nomad address not set", want: mapa, wantErr: true, address: ""},
 		{name: "Wrong Nomad address", want: mapa, wantErr: true, address: "%foo.html"},
 	}
@@ -69,7 +273,7 @@ func Test_readMeta(t *testing.T) {
 }
 
 func Test_checkMeta(t *testing.T) {
-	jobs, _ := getJobs(nomadHost)
+	jobs, _ := getJobs("http://127.0.0.1:8088")
 	type args struct {
 		jobMap map[string]*api.Job
 	}
@@ -111,19 +315,6 @@ func Test_checkMeta(t *testing.T) {
 		})
 	}
 }
-
-/*
-max_query:"sum(rate(nginx_http_requests_total{exported_host="tcs-nginx-fpm.dev.tcs.trv.cloud",status="200"}[1m]))by(exported_host) > bool 5 "
-min_query:"sum(rate(nginx_http_requests_total{exported_host="tcs-nginx-fpm.dev.tcs.trv.cloud",status="200"}[1m]))by(exported_host) < bool 0 "
-query_fire_time:"2m"
-scale_cooldown_down:"20s"
-scale_cooldown_up:"25s"
-scale_count_down:"1"
-scale_count_up:"2"
-scale_max:"16"
-scale_min:"4"
-scaler:"true"
-*/
 
 func Test_queryPrometheus(t *testing.T) {
 	metricsEndpoint = `http://demo.robustperception.io:9090/api/v1/query?query=`
@@ -241,10 +432,33 @@ func Test_prometheusQueries(t *testing.T) {
 	}
 }
 
-/*func TestGetJob(t *testing.T) {
+func Test_removeFromFiringMap(t *testing.T) {
 	type args struct {
-		jobID  string
-		region string
+		id string
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{name: "Normal", args: args{id: "test-job"}},
+		{name: "Normal", args: args{id: "pepe"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			removeFromFiringMap(tt.args.id)
+		})
+	}
+}
+
+func TestGetJob(t *testing.T) {
+	address := "http://127.0.0.1:8088"
+
+	var job nomad.Job
+	_ = json.Unmarshal([]byte(testJob), &job)
+	type args struct {
+		address string
+		jobID   string
+		region  string
 	}
 	tests := []struct {
 		name    string
@@ -252,11 +466,13 @@ func Test_prometheusQueries(t *testing.T) {
 		want    nomad.Job
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{name: "Normal", args: args{address: address, jobID: "test-job", region: "dc1"}, want: job, wantErr: false},
+		{name: "Not-existent job", args: args{address: address, jobID: "not-existen", region: "dc1"}, want: nomad.Job{}, wantErr: true},
+		//{name: "Wrong nomad address", args: args{address: "%foo.html", jobID: "test-job", region: "dc1"}, want: nomad.Job{}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetJob(tt.args.jobID, tt.args.region)
+			got, err := GetJob(tt.args.address, tt.args.jobID, tt.args.region)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetJob() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -267,4 +483,3 @@ func Test_prometheusQueries(t *testing.T) {
 		})
 	}
 }
-*/

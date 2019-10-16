@@ -399,7 +399,7 @@ func getJobs(address string) (map[string]*nomad.Job, error) {
 	for _, job := range joblist {
 		value, _, err := nomadClient.Jobs().Info(job.ID, options)
 		if err != nil {
-			log.Error("Error geting job Info from nomad with err: ", err, " for jobName: ", job.Name)
+			log.Error("Error getting job Info from nomad with err: ", err, " for jobName: ", job.Name)
 			continue
 		}
 
@@ -468,7 +468,7 @@ func main() {
 
 // GetJob function contacts Nomad based on nomadAddr with an jobID and returns the body of this request.
 // This requests contains the job definition from nomad that wants to be scaled.
-func GetJob(jobID string, region string) (nomad.Job, error) {
+func GetJob(address string, jobID string, region string) (nomad.Job, error) {
 
 	if _, ok := jobMap[jobID]; ok {
 		return *jobMap[jobID], nil
@@ -476,7 +476,7 @@ func GetJob(jobID string, region string) (nomad.Job, error) {
 
 	var nomadJob nomad.Job
 
-	client, err := api.NewClient(&api.Config{Address: nomadHost, TLSConfig: &api.TLSConfig{}})
+	client, err := api.NewClient(&api.Config{Address: address, TLSConfig: &api.TLSConfig{}})
 	if err != nil {
 		log.Error("Unable to create Nomad client with err: ", err)
 		return nomadJob, err
@@ -485,6 +485,10 @@ func GetJob(jobID string, region string) (nomad.Job, error) {
 	options := &api.QueryOptions{AllowStale: true}
 
 	nomadJobPointer, _, err := client.Jobs().Info(jobID, options)
+	if err != nil {
+		log.Error("Error getting job from nomad with err: ", err)
+		return nomad.Job{}, err
+	}
 
 	nomadJob = *nomadJobPointer
 	if err != nil {

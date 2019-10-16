@@ -35,7 +35,7 @@ func (scaler *Scaler) ScaleUp(jobID string, region string) (err error) {
 	if ok {
 		nomadJob = *jobMap[jobID]
 	} else {
-		nomadJob, err = GetJob(jobID, region)
+		nomadJob, err = GetJob(nomadHost, jobID, region)
 		if err != nil {
 			log.Warn("Error getting job with err: ", err)
 			return err
@@ -157,7 +157,7 @@ func manualScaleUp(w http.ResponseWriter, r *http.Request) {
 	region := chi.URLParam(r, "region")
 	user, pass, _ := r.BasicAuth()
 	if user == username && pass == password {
-		nomadJob, err := GetJob(jobName, region)
+		nomadJob, err := GetJob(nomadHost, jobName, region)
 		if err != nil {
 			log.Warn("Error getting job with err: ", err)
 			return

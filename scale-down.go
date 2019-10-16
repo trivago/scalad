@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/trivago/scalad/job"
-	"github.com/trivago/scalad/slack"
-	"github.com/trivago/scalad/structs"
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-chi/chi"
 	nomad "github.com/hashicorp/nomad/api"
+	"github.com/trivago/scalad/job"
+	"github.com/trivago/scalad/slack"
+	"github.com/trivago/scalad/structs"
 )
 
 // ScaleDown function checks that the current job is not in cooldown in the map and if it is not
@@ -35,7 +35,7 @@ func (scaler *Scaler) ScaleDown(jobID string, region string) (err error) {
 	if ok {
 		nomadJob = *jobMap[jobID]
 	} else {
-		nomadJob, err = GetJob(jobID, region)
+		nomadJob, err = GetJob(nomadHost, jobID, region)
 		if err != nil {
 			log.Warn("Error getting job with err: ", err)
 			return err
@@ -156,7 +156,7 @@ func manualScaleDown(w http.ResponseWriter, r *http.Request) {
 	region := chi.URLParam(r, "region")
 	user, pass, _ := r.BasicAuth()
 	if user == username && pass == password {
-		nomadJob, err := GetJob(jobName, region)
+		nomadJob, err := GetJob(nomadHost, jobName, region)
 		if err != nil {
 			log.Warn("Error getting job with err: ", err)
 			return
