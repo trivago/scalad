@@ -87,6 +87,7 @@ func (scaler *Scaler) scaleAction(body []byte) (err error) {
 	fmt.Println("Struct: ", postStruct)
 
 	for k := range postStruct.Alerts {
+
 		allocID := postStruct.Alerts[k].Labels.AllocID
 		jobID := postStruct.Alerts[k].Labels.JobName
 		log.Debug("Recieved scale for: ", jobID, " with alertname: ", postStruct.Alerts[k].Labels.Alertname)
