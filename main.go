@@ -225,12 +225,9 @@ func prometheusQueries(jobMetaMap map[string]*structs.Meta) {
 		job.MaxQuery = strings.Replace(job.MaxQuery, "\\", "", -1)
 		job.MinQuery = strings.Replace(job.MinQuery, "\\", "", -1)
 
-		maxQuery := metricsEndpoint + job.MaxQuery
-		minQuery := metricsEndpoint + job.MinQuery
-
 		log.Debug("Job: ", id)
-		log.Debug("MaxQuery query: ", maxQuery)
-		maxResult, err := queryPrometheus(maxQuery, job.MaxQuery)
+		log.Debug("MaxQuery: ", job.MaxQuery)
+		maxResult, err := queryPrometheus(job.MaxQuery)
 		if err != nil {
 			log.Error("Unable to get max result from prometheus with err: ", err, " for job: ", id)
 			removeFromFiringMap(id)
@@ -243,8 +240,8 @@ func prometheusQueries(jobMetaMap map[string]*structs.Meta) {
 			continue
 		}
 
-		log.Debug("MinQuery query: ", minQuery)
-		minResult, err := queryPrometheus(minQuery, job.MinQuery)
+		log.Debug("MinQuery: ", job.MinQuery)
+		minResult, err := queryPrometheus(job.MinQuery)
 		if err != nil {
 			log.Error("Unable to get min result from prometheus with err: ", err, " for job: ", id)
 			removeFromFiringMap(id)
@@ -261,14 +258,17 @@ func prometheusQueries(jobMetaMap map[string]*structs.Meta) {
 	jobMetaMapMutex.Unlock()
 }
 
-func queryPrometheus(query string, promQuery string) (bool, error) {
+func queryPrometheus(promQuery string) (bool, error) {
 	var result structs.Prometheus
 
 	client := &http.Client{
 		Timeout: (time.Second * 10),
 	}
 
-	u, err := url.Parse(fmt.Sprintf("%s%s", metricsEndpoint, url.QueryEscape(promQuery)))
+	query_url := fmt.Sprintf("%s%s", metricsEndpoint, url.QueryEscape(promQuery))
+	log.Debug("Query URL: ", query_url)
+
+	u, err := url.Parse(query_url)
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		log.Error("Error creating new request with err: ", err)
