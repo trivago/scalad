@@ -28,6 +28,7 @@ var (
 	port                = os.Getenv("PORT")
 	nomadHost           = os.Getenv("NOMAD_HOST")
 	region              = os.Getenv("NOMAD_REGION")
+	nomadCaCert         = os.Getenv("NOMAD_CACERT")
 	vaultToken          = os.Getenv("VAULT_TOKEN")
 	useSlack            = os.Getenv("USE_SLACK")
 	username            = os.Getenv("HTTP_USER")
@@ -365,7 +366,7 @@ func readMeta(t map[string]string) *structs.Meta {
 func getJobs() (map[string]*nomad.Job, error) {
 	jobMap := make(map[string]*nomad.Job)
 
-	nomadClient, err := api.NewClient(&api.Config{Address: nomadHost, TLSConfig: &api.TLSConfig{}})
+	nomadClient, err := api.NewClient(&api.Config{Address: nomadHost, TLSConfig: &api.TLSConfig{CACert: nomadCaCert}})
 	if err != nil {
 		log.Error("Error creating nomad client with err: ", err)
 	}
@@ -428,6 +429,7 @@ func main() {
 	log.Info("Port:            ", port)
 	log.Info("Nomad Host:      ", nomadHost)
 	log.Info("Nomad Region:    ", region)
+	log.Info("Nomad CA Cert:   ", nomadCaCert)
 	if len(vaultToken) != 0 {
 		log.Info("Vault Token:     ", "************")
 	} else {
@@ -471,7 +473,7 @@ func GetJob(jobID string, region string) (nomad.Job, error) {
 
 	var nomadJob nomad.Job
 
-	client, err := api.NewClient(&api.Config{Address: nomadHost, TLSConfig: &api.TLSConfig{}})
+	client, err := api.NewClient(&api.Config{Address: nomadHost, TLSConfig: &api.TLSConfig{CACert: nomadCaCert}})
 	if err != nil {
 		log.Error("Unable to create Nomad client with err: ", err)
 		return nomadJob, err
@@ -494,7 +496,7 @@ func GetJob(jobID string, region string) (nomad.Job, error) {
 func executeJob(nomadJob nomad.Job) (ok bool, err error) {
 	*nomadJob.VaultToken = vaultToken
 
-	nomadClient, err := api.NewClient(&api.Config{Address: nomadHost, TLSConfig: &api.TLSConfig{}})
+	nomadClient, err := api.NewClient(&api.Config{Address: nomadHost, TLSConfig: &api.TLSConfig{CACert: nomadCaCert}})
 	if err != nil {
 		log.Error("Unable to create Nomad client with err: ", err)
 		return false, err
