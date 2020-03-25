@@ -59,6 +59,22 @@ func (scaler *Scaler) resumeScallingJob(w http.ResponseWriter, r *http.Request) 
 	jobID := chi.URLParam(r, "jobName")
 	mapID := jobID + "-" + region
 
+	jobMapMutex.Lock()
+	jobMapScaleMutex.Lock()
+
+	log.Debug("Refreshing job config for ", jobID)
+	delete(jobMap, jobID)
+	delete(jobMapScale, jobID)
+	jobMapScaleMutex.Unlock()
+
+	nomadJob, err := GetJob(jobID, region)
+	if err != nil {
+		log.Warn("Error getting job ", jobID, " with err: ", err)
+	} else {
+		jobMap[jobID] = &nomadJob
+	}
+	jobMapMutex.Unlock()
+
 	mutex.Lock()
 	defer mutex.Unlock()
 	delete(scaler.jobMap, mapID)
