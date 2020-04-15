@@ -482,13 +482,12 @@ func GetJob(jobID string, region string) (nomad.Job, error) {
 	options := &api.QueryOptions{AllowStale: true}
 
 	nomadJobPointer, _, err := client.Jobs().Info(jobID, options)
-
-	nomadJob = *nomadJobPointer
 	if err != nil {
-		log.Error("Unable to get job for", jobID, " from nomad with err: ", err)
+		log.Error("Unable to get job for ", jobID, " from nomad with err: ", err)
 		return nomadJob, err
 	}
 
+	nomadJob = *nomadJobPointer
 	return nomadJob, nil
 
 }
