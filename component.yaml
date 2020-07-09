@@ -1,0 +1,12 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: Scalad
+  description: Component for the nomad autoscaler
+spec:
+  type: service
+  endpoint: http://www.trivago.com
+  documentation: http://knowledge.trivago.com/
+  lifecycle: stable
+  owner: esteban.barrios@trivago.com
+  githubLink: https://api.github.com/repos/trivago/scalad/actions/runs
