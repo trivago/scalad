@@ -3,6 +3,7 @@ kind: Component
 metadata:
   name: Scalad
   description: Component for the nomad autoscaler
+  annotations: backstage.io/github-actions-id
 spec:
   type: service
   endpoint: http://www.trivago.com
