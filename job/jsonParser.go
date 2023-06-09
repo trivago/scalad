@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/trivago/scalad/structs"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	nomad "github.com/hashicorp/nomad/api"
 	tparse "github.com/karrick/tparse/v2"
 	"github.com/prometheus/client_golang/prometheus"

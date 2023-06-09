@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/go-chi/chi"
 	"github.com/hashicorp/nomad/api"
 	nomad "github.com/hashicorp/nomad/api"

@@ -1,4 +1,4 @@
-FROM golang:1.14.2 as build-env
+FROM golang:1.18 as build-env
 COPY . /go/src/github.com/trivago/scalad
 WORKDIR /go/src/github.com/trivago/scalad
 RUN go get
