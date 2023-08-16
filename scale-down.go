@@ -8,7 +8,7 @@ import (
 	"github.com/trivago/scalad/job"
 	"github.com/trivago/scalad/slack"
 	"github.com/trivago/scalad/structs"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/go-chi/chi"
 	nomad "github.com/hashicorp/nomad/api"
 )

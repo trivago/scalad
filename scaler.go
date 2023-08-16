@@ -10,7 +10,7 @@ import (
 
 	"github.com/trivago/scalad/slack"
 	"github.com/trivago/scalad/structs"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/go-chi/chi"
 	tparse "github.com/karrick/tparse/v2"
 )
