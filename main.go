@@ -28,6 +28,7 @@ var (
 	port                = os.Getenv("PORT")
 	nomadHost           = os.Getenv("NOMAD_HOST")
 	region              = os.Getenv("NOMAD_REGION")
+	nomad_namespace     = os.Getenv("NOMAD_NAMESPACE")
 	nomadCaCert         = os.Getenv("NOMAD_CACERT")
 	vaultToken          = os.Getenv("VAULT_TOKEN")
 	useSlack            = os.Getenv("USE_SLACK")
@@ -371,7 +372,7 @@ func getJobs() (map[string]*nomad.Job, error) {
 		log.Error("Error creating nomad client with err: ", err)
 	}
 
-	options := &api.QueryOptions{AllowStale: true}
+	options := &api.QueryOptions{AllowStale: true, Namespace: nomad_namespace}
 
 	joblist, _, err := nomadClient.Jobs().List(options)
 	if err != nil {
