@@ -1,3 +1,8 @@
+
+> [!CAUTION]
+> This repository has been archived as of June 2026.  
+> If you wish to update or extend this project, please create a fork.
+
 <p align="center">
 <img width="250" src="scalad_mascot.png" />
 </p>
